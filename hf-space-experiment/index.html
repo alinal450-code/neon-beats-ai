@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NEON BEATS AI — тест</title>
+<style>
+body{background:#0b0712;color:white;font:16px Arial;padding:20px;max-width:650px;margin:auto}
+h1{color:#ff42d0}
+input,textarea,button{box-sizing:border-box;width:100%;padding:13px;margin:10px 0;border-radius:10px}
+textarea,input{background:#191222;color:white;border:1px solid #70436e}
+button{background:#ff42d0;color:#160b18;font-weight:bold;border:0}
+img,video{width:100%;margin-top:12px;border-radius:12px}
+</style>
+</head>
+<body>
+<h1>NEON BEATS AI</h1>
+<p>Тест настоящей AI-анимации фотографии.</p>
+
+<input id="photo" type="file" accept="image/*">
+<img id="preview" hidden>
+
+<textarea id="prompt" rows="4">The person gently turns their head, natural blinking, subtle hair movement in a soft breeze. Preserve identity and facial features.</textarea>
+
+<p>Фото будет отправлено стороннему сервису Hugging Face для генерации.</p>
+<button id="run">СОЗДАТЬ ВИДЕО</button>
+<p id="status">Выбери фотографию для начала.</p>
+<video id="video" controls playsinline hidden></video>
+
+<script type="module">
+import { Client } from "https://esm.sh/@gradio/client";
+
+const photo=document.querySelector("#photo");
+const preview=document.querySelector("#preview");
+const status=document.querySelector("#status");
+const video=document.querySelector("#video");
+let file;
+
+photo.onchange=()=>{
+ file=photo.files[0];
+ if(file){preview.src=URL.createObjectURL(file);preview.hidden=false;}
+};
+
+document.querySelector("#run").onclick=async()=>{
+ if(!file){status.textContent="Сначала выбери фото.";return;}
+ status.textContent="Подключаю модель. Ожидаем генерацию...";
+ try{
+  const image_b64=await new Promise((resolve,reject)=>{
+   const reader=new FileReader();
+   reader.onload=()=>resolve(reader.result);
+   reader.onerror=reject;
+   reader.readAsDataURL(file);
+  });
+
+  const client=await Client.connect("prithivMLmods/Wan2.2-Fast");
+  const response=await client.predict("/generate_video",{
+   image_b64,
+   prompt:document.querySelector("#prompt").value,
+   steps:4,
+   negative_prompt:"blurry, distorted face, flicker, low quality",
+   duration_seconds:3,
+   guidance_scale:1,
+   guidance_scale_2:1,
+   seed:42,
+   randomize_seed:true
+  });
+
+  const output=response.data[0];
+  const result=output.video;
+  video.src=typeof result==="string"?result:result.url;
+  video.hidden=false;
+  status.textContent="Видео готово!";
+ }catch(e){
+  status.textContent="Ошибка: "+e.message;
+ }
+};
+</script>
+</body>
+</html>
